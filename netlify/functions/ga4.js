@@ -1,133 +1,81 @@
-/**
- * Netlify Function: /api/ga4
- * Proxies Google Analytics Data API v1 for the campaign dashboard.
- *
- * Required Netlify env vars:
- *   GA4_PROPERTY_ID  = properties/500643354
- *   GOOGLE_SA_JSON   = <service account key JSON string>
- *
- * Endpoints (via ?report= query param):
- *   funnel     — 4 milestone conversion events (last 30 days, daily)
- *   traffic    — sessions by channel/source (last 30 days)
- *   engagement — top pages by views + avg session duration (last 30 days)
- *   utm        — sessions broken down by utm_source + utm_campaign (last 30 days)
- */
-
 const { BetaAnalyticsDataClient } = require('@google-analytics/data');
+const { google } = require('googleapis');
 
-const PROPERTY_ID = process.env.GA4_PROPERTY_ID;
-const SA_JSON = process.env.GOOGLE_SA_JSON;
+const getOAuthClient = () => {
+  const oauth2Client = new google.auth.OAuth2(
+    process.env.GOOGLE_CLIENT_ID,
+    process.env.GOOGLE_CLIENT_SECRET
+  );
+  oauth2Client.setCredentials({ refresh_token: process.env.GOOGLE_REFRESH_TOKEN });
+  return oauth2Client;
+};
 
-function getClient() {
-  if (!SA_JSON) throw new Error('GOOGLE_SA_JSON env var not set');
-  const credentials = JSON.parse(SA_JSON);
-  return new BetaAnalyticsDataClient({ credentials });
-}
+const propertyId = process.env.GA4_PROPERTY_ID || 'properties/500643354';
 
-async function funnelReport(client) {
-  const [response] = await client.runReport({
-    property: PROPERTY_ID,
+const REPORTS = {
+  funnel: {
     dateRanges: [{ startDate: '30daysAgo', endDate: 'today' }],
-    dimensions: [{ name: 'date' }, { name: 'eventName' }],
+    dimensions: [{ name: 'eventName' }],
     metrics: [{ name: 'eventCount' }],
     dimensionFilter: {
       filter: {
         fieldName: 'eventName',
         inListFilter: {
-          values: ['signup_click', 'signup_complete', 'first_chat_sent', 'subscription_started', 'utm_captured'],
-        },
-      },
-    },
-    orderBys: [{ dimension: { dimensionName: 'date' } }],
-  });
-  return response;
-}
-
-async function trafficReport(client) {
-  const [response] = await client.runReport({
-    property: PROPERTY_ID,
+          values: ['signup_click','signup_complete','login_complete','first_chat_sent','subscription_started','cta_click','form_start']
+        }
+      }
+    }
+  },
+  traffic: {
     dateRanges: [{ startDate: '30daysAgo', endDate: 'today' }],
-    dimensions: [{ name: 'sessionSource' }, { name: 'sessionMedium' }],
-    metrics: [{ name: 'sessions' }, { name: 'newUsers' }, { name: 'bounceRate' }],
-    orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
-    limit: 20,
-  });
-  return response;
-}
-
-async function engagementReport(client) {
-  const [response] = await client.runReport({
-    property: PROPERTY_ID,
+    dimensions: [{ name: 'sessionDefaultChannelGroup' }, { name: 'date' }],
+    metrics: [{ name: 'sessions' }, { name: 'totalUsers' }],
+    orderBys: [{ dimension: { dimensionName: 'date' } }]
+  },
+  engagement: {
     dateRanges: [{ startDate: '30daysAgo', endDate: 'today' }],
     dimensions: [{ name: 'pagePath' }],
-    metrics: [
-      { name: 'screenPageViews' },
-      { name: 'averageSessionDuration' },
-      { name: 'bounceRate' },
-      { name: 'sessions' },
-    ],
+    metrics: [{ name: 'screenPageViews' }, { name: 'bounceRate' }, { name: 'averageSessionDuration' }, { name: 'engagedSessions' }],
     orderBys: [{ metric: { metricName: 'screenPageViews' }, desc: true }],
-    limit: 10,
-  });
-  return response;
-}
-
-async function utmReport(client) {
-  const [response] = await client.runReport({
-    property: PROPERTY_ID,
+    limit: 10
+  },
+  utm: {
     dateRanges: [{ startDate: '30daysAgo', endDate: 'today' }],
-    dimensions: [
-      { name: 'sessionSource' },
-      { name: 'sessionCampaignName' },
-      { name: 'date' },
-    ],
-    metrics: [{ name: 'sessions' }, { name: 'newUsers' }],
-    dimensionFilter: {
-      filter: {
-        fieldName: 'sessionMedium',
-        stringFilter: { value: 'paid_social', matchType: 'EXACT' },
-      },
-    },
-    orderBys: [{ dimension: { dimensionName: 'date' } }],
-  });
-  return response;
-}
+    dimensions: [{ name: 'sessionSource' }, { name: 'sessionMedium' }, { name: 'sessionCampaignName' }],
+    metrics: [{ name: 'sessions' }, { name: 'totalUsers' }, { name: 'conversions' }],
+    orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
+    limit: 20
+  },
+  daily: {
+    dateRanges: [{ startDate: '30daysAgo', endDate: 'today' }],
+    dimensions: [{ name: 'date' }],
+    metrics: [{ name: 'sessions' }, { name: 'totalUsers' }, { name: 'newUsers' }, { name: 'engagedSessions' }],
+    orderBys: [{ dimension: { dimensionName: 'date' } }]
+  }
+};
 
 exports.handler = async (event) => {
   const headers = {
-    'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Content-Type': 'application/json'
   };
+  if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers, body: '' };
 
-  if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 200, headers, body: '' };
+  const reportType = event.queryStringParameters?.type || 'funnel';
+  if (!REPORTS[reportType]) return { statusCode: 400, headers, body: JSON.stringify({ error: `Unknown report type: ${reportType}` }) };
+
+  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET || !process.env.GOOGLE_REFRESH_TOKEN) {
+    return { statusCode: 200, headers, body: JSON.stringify({ error: 'missing_credentials', message: 'Set GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REFRESH_TOKEN in Netlify env vars.' }) };
   }
 
   try {
-    if (!PROPERTY_ID) throw new Error('GA4_PROPERTY_ID env var not set');
-    const client = getClient();
-    const report = event.queryStringParameters?.report ?? 'funnel';
-
-    let data;
-    switch (report) {
-      case 'funnel':     data = await funnelReport(client); break;
-      case 'traffic':    data = await trafficReport(client); break;
-      case 'engagement': data = await engagementReport(client); break;
-      case 'utm':        data = await utmReport(client); break;
-      default:           data = await funnelReport(client);
-    }
-
-    return {
-      statusCode: 200,
-      headers,
-      body: JSON.stringify({ ok: true, report, data }),
-    };
+    const auth = getOAuthClient();
+    const analyticsClient = new BetaAnalyticsDataClient({ authClient: auth });
+    const [response] = await analyticsClient.runReport({ property: propertyId, ...REPORTS[reportType] });
+    return { statusCode: 200, headers, body: JSON.stringify({ rows: response.rows || [], rowCount: response.rowCount || 0, dimensionHeaders: response.dimensionHeaders, metricHeaders: response.metricHeaders }) };
   } catch (err) {
-    console.error('[ga4 function error]', err);
-    return {
-      statusCode: 500,
-      headers,
-      body: JSON.stringify({ ok: false, error: err.message }),
-    };
+    console.error('GA4 error:', err);
+    return { statusCode: 500, headers, body: JSON.stringify({ error: err.message }) };
   }
 };
