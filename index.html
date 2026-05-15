@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Definable.ai — Campaign Dashboard</title>
+<style>
+  :root {
+    --bg: #0a0a0f; --card: #111118; --border: #1e1e2e; --accent: #7c5cfc;
+    --accent2: #00d4aa; --accent3: #ff6b6b; --accent4: #ffd93d;
+    --text: #e8e8f0; --muted: #6b6b8a; --new: #00d4aa; --ret: #7c5cfc;
+    --warn: #ff6b6b; --ok: #00d4aa;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:'Inter',system-ui,sans-serif; min-height:100vh; }
+
+  /* HEADER */
+  .header { padding:24px 32px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+  .logo { font-size:20px; font-weight:700; letter-spacing:-0.5px; }
+  .logo span { color:var(--accent); }
+  .header-meta { display:flex; gap:16px; align-items:center; }
+  .badge { background:#1a1a2e; border:1px solid var(--border); padding:4px 12px; border-radius:20px; font-size:12px; color:var(--muted); }
+  .badge.live { border-color:var(--ok); color:var(--ok); }
+  .badge.live::before { content:"● "; }
+
+  /* INSIGHT BANNER */
+  .insight-banner { margin:24px 32px 0; background:linear-gradient(135deg,#1a0a2e,#0a1a2e); border:1px solid #7c5cfc44; border-radius:12px; padding:16px 20px; display:flex; align-items:center; gap:12px; }
+  .insight-icon { font-size:24px; }
+  .insight-text h3 { font-size:14px; font-weight:600; color:var(--accent); margin-bottom:4px; }
+  .insight-text p { font-size:13px; color:var(--muted); line-height:1.5; }
+  .insight-text strong { color:var(--text); }
+
+  /* SECTION LABELS */
+  .section { padding:24px 32px 0; }
+  .section-title { font-size:11px; font-weight:600; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted); margin-bottom:16px; display:flex; align-items:center; gap:8px; }
+  .section-title::after { content:""; flex:1; height:1px; background:var(--border); }
+
+  /* LEGEND */
+  .legend { display:flex; gap:16px; margin-bottom:16px; }
+  .legend-item { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--muted); }
+  .legend-dot { width:8px; height:8px; border-radius:50%; }
+
+  /* KPI GRID */
+  .kpi-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:12px; }
+  .kpi { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:18px 20px; position:relative; overflow:hidden; }
+  .kpi::before { content:""; position:absolute; top:0; left:0; right:0; height:2px; }
+  .kpi.green::before { background:var(--ok); }
+  .kpi.purple::before { background:var(--accent); }
+  .kpi.red::before { background:var(--warn); }
+  .kpi.yellow::before { background:var(--accent4); }
+  .kpi.blue::before { background:#4fc3f7; }
+  .kpi-label { font-size:11px; color:var(--muted); margin-bottom:8px; text-transform:uppercase; letter-spacing:0.5px; }
+  .kpi-value { font-size:28px; font-weight:700; letter-spacing:-1px; margin-bottom:4px; }
+  .kpi-sub { font-size:11px; color:var(--muted); }
+  .kpi-sub .up { color:var(--ok); }
+  .kpi-sub .down { color:var(--warn); }
+  .kpi-split { display:flex; gap:8px; margin-top:8px; }
+  .kpi-split-item { flex:1; background:#0a0a14; border-radius:6px; padding:6px 8px; text-align:center; }
+  .kpi-split-item .val { font-size:14px; font-weight:600; }
+  .kpi-split-item .lbl { font-size:9px; color:var(--muted); text-transform:uppercase; }
+  .new-color { color:var(--new); }
+  .ret-color { color:var(--ret); }
+
+  /* FUNNEL */
+  .funnel-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  .funnel-card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:20px; }
+  .funnel-card h3 { font-size:13px; font-weight:600; margin-bottom:4px; }
+  .funnel-card .subtitle { font-size:11px; color:var(--muted); margin-bottom:16px; }
+  .funnel-step { display:flex; align-items:center; gap:12px; margin-bottom:4px; }
+  .funnel-bar-wrap { flex:1; position:relative; }
+  .funnel-bar-bg { background:#1a1a2a; border-radius:4px; height:32px; position:relative; overflow:hidden; }
+  .funnel-bar-fill { height:100%; border-radius:4px; transition:width 0.8s ease; display:flex; align-items:center; padding-left:10px; }
+  .funnel-bar-fill.new-bar { background:linear-gradient(90deg,#00d4aa22,#00d4aa44); border-left:3px solid var(--new); }
+  .funnel-bar-fill.ret-bar { background:linear-gradient(90deg,#7c5cfc22,#7c5cfc44); border-left:3px solid var(--accent); }
+  .funnel-bar-label { font-size:11px; font-weight:600; white-space:nowrap; }
+  .funnel-meta { text-align:right; min-width:120px; }
+  .funnel-count { font-size:15px; font-weight:700; }
+  .funnel-conv { font-size:10px; padding:2px 6px; border-radius:10px; margin-top:2px; display:inline-block; }
+  .funnel-conv.good { background:#00d4aa22; color:var(--ok); }
+  .funnel-conv.warn { background:#ff6b6b22; color:var(--warn); }
+  .funnel-conv.crit { background:#ff6b6b44; color:var(--warn); font-weight:700; }
+  .funnel-arrow { text-align:center; font-size:10px; color:var(--muted); margin:2px 0; padding-left:120px; }
+  .drop-label { font-size:10px; color:var(--warn); }
+
+  /* CHAT TRUTH BOX */
+  .truth-box { background:linear-gradient(135deg,#1a1a0a,#0a1a1a); border:1px solid var(--accent4); border-radius:12px; padding:20px; }
+  .truth-box h3 { font-size:13px; font-weight:600; color:var(--accent4); margin-bottom:12px; }
+  .truth-split { display:flex; align-items:center; gap:0; border-radius:8px; overflow:hidden; height:40px; margin-bottom:12px; }
+  .truth-new { background:var(--new); display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; color:#000; }
+  .truth-ret { background:var(--accent); display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; color:#fff; }
+  .truth-legend { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .truth-item { background:#0a0a14; border-radius:8px; padding:10px 12px; }
+  .truth-item .val { font-size:20px; font-weight:700; }
+  .truth-item .desc { font-size:10px; color:var(--muted); margin-top:2px; }
+  .truth-item .note { font-size:9px; margin-top:4px; padding:2px 6px; border-radius:4px; display:inline-block; }
+  .truth-item.new-item .val { color:var(--new); }
+  .truth-item.new-item .note { background:#00d4aa22; color:var(--ok); }
+  .truth-item.ret-item .val { color:var(--accent); }
+  .truth-item.ret-item .note { background:#7c5cfc22; color:var(--accent); }
+
+  /* TWO-COL GRID */
+  .two-col { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  .three-col { display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; }
+
+  /* GENERAL CARD */
+  .card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:20px; }
+  .card h3 { font-size:13px; font-weight:600; margin-bottom:4px; }
+  .card .subtitle { font-size:11px; color:var(--muted); margin-bottom:14px; }
+
+  /* BAR ROWS */
+  .bar-row { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+  .bar-row-label { font-size:12px; min-width:130px; color:var(--text); }
+  .bar-row-track { flex:1; background:#1a1a2a; border-radius:3px; height:20px; overflow:hidden; position:relative; }
+  .bar-row-fill { height:100%; border-radius:3px; display:flex; align-items:center; padding-left:8px; font-size:10px; font-weight:600; }
+  .bar-row-val { font-size:12px; font-weight:600; min-width:50px; text-align:right; }
+  .bar-new { background:linear-gradient(90deg,#00d4aa,#00b894); color:#000; }
+  .bar-ret { background:linear-gradient(90deg,#7c5cfc,#6c4de0); color:#fff; }
+  .bar-direct { background:linear-gradient(90deg,#4fc3f7,#0288d1); color:#000; }
+  .bar-organic { background:linear-gradient(90deg,#81c784,#388e3c); color:#000; }
+  .bar-social { background:linear-gradient(90deg,#ff8a65,#e64a19); color:#fff; }
+  .bar-referral { background:linear-gradient(90deg,#ce93d8,#8e24aa); color:#fff; }
+
+  /* ENGAGEMENT TABLE */
+  .eng-table { width:100%; border-collapse:collapse; }
+  .eng-table th { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; text-align:left; padding:6px 8px; border-bottom:1px solid var(--border); }
+  .eng-table td { font-size:12px; padding:8px; border-bottom:1px solid #0f0f1a; }
+  .eng-table tr:last-child td { border-bottom:none; }
+  .eng-score { padding:2px 8px; border-radius:10px; font-size:11px; font-weight:600; display:inline-block; }
+  .eng-score.excellent { background:#00d4aa22; color:var(--ok); }
+  .eng-score.good { background:#7c5cfc22; color:var(--accent); }
+  .eng-score.warn { background:#ff6b6b22; color:var(--warn); }
+  .eng-score.crit { background:#ff6b6b44; color:var(--warn); }
+
+  /* EVENT BREAKDOWN */
+  .event-row { display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #0f0f1a; }
+  .event-row:last-child { border-bottom:none; }
+  .event-name { font-size:12px; font-family:monospace; color:var(--accent2); }
+  .event-bars { display:flex; gap:4px; align-items:center; }
+  .event-pill { font-size:11px; font-weight:600; padding:2px 8px; border-radius:10px; }
+  .event-pill.new-pill { background:#00d4aa22; color:var(--new); }
+  .event-pill.ret-pill { background:#7c5cfc22; color:var(--accent); }
+
+  /* DAILY TREND */
+  .sparkline-wrap { display:flex; align-items:flex-end; gap:3px; height:60px; margin:8px 0; }
+  .spark-bar { flex:1; border-radius:2px 2px 0 0; min-width:4px; }
+  .spark-new { background:var(--new); opacity:0.8; }
+  .spark-ret { background:var(--accent); opacity:0.6; }
+  .spark-labels { display:flex; justify-content:space-between; font-size:9px; color:var(--muted); margin-top:4px; }
+
+  /* ACQUISITION INSIGHT */
+  .acq-row { display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #0f0f1a; }
+  .acq-row:last-child { border-bottom:none; }
+  .acq-channel { font-size:12px; display:flex; align-items:center; gap:6px; }
+  .acq-dot { width:6px; height:6px; border-radius:50%; }
+  .acq-stats { display:flex; gap:16px; }
+  .acq-stat { text-align:right; }
+  .acq-stat .val { font-size:12px; font-weight:600; }
+  .acq-stat .lbl { font-size:9px; color:var(--muted); }
+  .eng-bar { width:60px; background:#1a1a2a; border-radius:3px; height:4px; }
+  .eng-bar-fill { height:100%; border-radius:3px; background:var(--ok); }
+
+  /* CRITICAL FINDINGS */
+  .findings-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; }
+  .finding { border-radius:10px; padding:14px 16px; border:1px solid; }
+  .finding.critical { background:#ff6b6b0a; border-color:#ff6b6b33; }
+  .finding.warning { background:#ffd93d0a; border-color:#ffd93d33; }
+  .finding.positive { background:#00d4aa0a; border-color:#00d4aa33; }
+  .finding-label { font-size:10px; font-weight:700; letter-spacing:1px; text-transform:uppercase; margin-bottom:6px; }
+  .finding.critical .finding-label { color:var(--warn); }
+  .finding.warning .finding-label { color:var(--accent4); }
+  .finding.positive .finding-label { color:var(--ok); }
+  .finding-stat { font-size:22px; font-weight:700; margin-bottom:4px; }
+  .finding.critical .finding-stat { color:var(--warn); }
+  .finding.warning .finding-stat { color:var(--accent4); }
+  .finding.positive .finding-stat { color:var(--ok); }
+  .finding-desc { font-size:11px; color:var(--muted); line-height:1.5; }
+
+  /* FOOTER */
+  .footer { padding:20px 32px; border-top:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; margin-top:32px; }
+  .footer-note { font-size:11px; color:var(--muted); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">Definable<span>.ai</span> Campaign Dashboard</div>
+  <div class="header-meta">
+    <span class="badge">Apr 15 – May 15, 2026 · 30 days</span>
+    <span class="badge live">Live GA4 Data</span>
+    <span class="badge">New vs Returning Segmented</span>
+  </div>
+</div>
+
+<!-- INSIGHT BANNER -->
+<div class="insight-banner">
+  <div class="insight-icon">🔍</div>
+  <div class="insight-text">
+    <h3>Key Insight: /chat was hiding the real picture</h3>
+    <p>The previous dashboard showed <strong>750 /chat sessions</strong> making it look like a strong funnel step — but <strong>90.1% (676) are returning users</strong>. Only <strong>74 new users (9.9%)</strong> reached /chat. This is now fixed below with proper new-user-only funnel tracking.</p>
+  </div>
+</div>
+
+<!-- KPIs -->
+<div class="section">
+  <div class="section-title">Overall Performance</div>
+  <div class="kpi-grid">
+    <div class="kpi green">
+      <div class="kpi-label">Total Sessions</div>
+      <div class="kpi-value">2,430</div>
+      <div class="kpi-split">
+        <div class="kpi-split-item"><div class="val new-color">1,167</div><div class="lbl">New</div></div>
+        <div class="kpi-split-item"><div class="val ret-color">1,192</div><div class="lbl">Returning</div></div>
+      </div>
+    </div>
+    <div class="kpi purple">
+      <div class="kpi-label">New Users (Campaign Target)</div>
+      <div class="kpi-value new-color">1,194</div>
+      <div class="kpi-sub">Unique first-time visitors</div>
+      <div class="kpi-sub"><span class="up">+40/day avg</span></div>
+    </div>
+    <div class="kpi yellow">
+      <div class="kpi-label">UTM Captured (New)</div>
+      <div class="kpi-value">638</div>
+      <div class="kpi-sub">53.4% of new users had UTM</div>
+      <div class="kpi-split">
+        <div class="kpi-split-item"><div class="val new-color">638</div><div class="lbl">New</div></div>
+        <div class="kpi-split-item"><div class="val ret-color">287</div><div class="lbl">Return</div></div>
+      </div>
+    </div>
+    <div class="kpi red">
+      <div class="kpi-label">New User Bounce Rate</div>
+      <div class="kpi-value" style="color:var(--warn)">60.5%</div>
+      <div class="kpi-sub"><span class="down">vs 23.5% returning</span></div>
+      <div class="kpi-sub">Signup page: <span class="down">48.3% bounce</span></div>
+    </div>
+    <div class="kpi blue">
+      <div class="kpi-label">Returning Engagement</div>
+      <div class="kpi-value" style="color:#4fc3f7">76.5%</div>
+      <div class="kpi-sub"><span class="up">Product is sticky ✓</span></div>
+      <div class="kpi-sub">1.94× better than new</div>
+    </div>
+  </div>
+</div>
+
+<!-- FUNNEL: NEW USERS ONLY -->
+<div class="section" style="padding-top:28px">
+  <div class="section-title">Campaign Funnel — New Users Only (Verified)</div>
+  <div class="funnel-grid">
+    <!-- NEW USER FUNNEL -->
+    <div class="funnel-card">
+      <h3>🟢 New User Journey — Campaign Funnel</h3>
+      <div class="subtitle">Only first-time visitors · What your paid campaigns will drive</div>
+
+      <!-- Step 1 -->
+      <div class="funnel-step">
+        <div class="funnel-bar-wrap">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:3px">1 · First Visit</div>
+          <div class="funnel-bar-bg">
+            <div class="funnel-bar-fill new-bar" style="width:100%"><span class="funnel-bar-label new-color">1,194 new visitors</span></div>
+          </div>
+        </div>
+        <div class="funnel-meta"><div class="funnel-count new-color">1,194</div><div class="funnel-conv good">Baseline</div></div>
+      </div>
+      <div class="funnel-arrow">↓ <span class="drop-label">91.4% did NOT go to /signup — biggest drop-off</span></div>
+
+      <!-- Step 2 -->
+      <div class="funnel-step">
+        <div class="funnel-bar-wrap">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:3px">2 · Visited /signup</div>
+          <div class="funnel-bar-bg">
+            <div class="funnel-bar-fill new-bar" style="width:8.6%"><span class="funnel-bar-label new-color"></span></div>
+          </div>
+        </div>
+        <div class="funnel-meta"><div class="funnel-count new-color">103</div><div class="funnel-conv crit">8.6% conv</div></div>
+      </div>
+      <div class="funnel-arrow">↓ <span class="drop-label">48.3% bounced from /signup immediately</span></div>
+
+      <!-- Step 3 -->
+      <div class="funnel-step">
+        <div class="funnel-bar-wrap">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:3px">3 · Started Form</div>
+          <div class="funnel-bar-bg">
+            <div class="funnel-bar-fill new-bar" style="width:3.4%"></div>
+          </div>
+        </div>
+        <div class="funnel-meta"><div class="funnel-count new-color">41</div><div class="funnel-conv warn">39.8% of visitors</div></div>
+      </div>
+      <div class="funnel-arrow">↓ <span style="color:var(--ok)">Strong completion — 95.1% who started finished</span></div>
+
+      <!-- Step 4 -->
+      <div class="funnel-step">
+        <div class="funnel-bar-wrap">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:3px">4 · /onboarding (Signup Complete ✓)</div>
+          <div class="funnel-bar-bg">
+            <div class="funnel-bar-fill new-bar" style="width:8.2%"></div>
+          </div>
+        </div>
+        <div class="funnel-meta"><div class="funnel-count new-color">98</div><div class="funnel-conv good">95.1% of form</div></div>
+      </div>
+      <div class="funnel-arrow">↓ 33.7% drop — some signed up but didn't sign in same session</div>
+
+      <!-- Step 5 -->
+      <div class="funnel-step">
+        <div class="funnel-bar-wrap">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:3px">5 · /auth/callback (Signed In ✓)</div>
+          <div class="funnel-bar-bg">
+            <div class="funnel-bar-fill new-bar" style="width:5.4%"></div>
+          </div>
+        </div>
+        <div class="funnel-meta"><div class="funnel-count new-color">65</div><div class="funnel-conv good">66.3% of onboarding</div></div>
+      </div>
+      <div class="funnel-arrow">↓ <span style="color:var(--ok)">113.8%* — returning users boosting this step</span></div>
+
+      <!-- Step 6 -->
+      <div class="funnel-step">
+        <div class="funnel-bar-wrap">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:3px">6 · /chat (Used Product ✓)</div>
+          <div class="funnel-bar-bg">
+            <div class="funnel-bar-fill new-bar" style="width:6.2%"></div>
+          </div>
+        </div>
+        <div class="funnel-meta"><div class="funnel-count new-color">74</div><div class="funnel-conv good">6.2% of all new</div></div>
+      </div>
+      <div class="funnel-arrow">↓ <span class="drop-label">77% drop — massive gap: chat users not upgrading</span></div>
+
+      <!-- Step 7 -->
+      <div class="funnel-step">
+        <div class="funnel-bar-wrap">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:3px">7 · /billing (Upgrade Intent ✓)</div>
+          <div class="funnel-bar-bg">
+            <div class="funnel-bar-fill new-bar" style="width:1.4%"></div>
+          </div>
+        </div>
+        <div class="funnel-meta"><div class="funnel-count new-color">17</div><div class="funnel-conv warn">23% of chat</div></div>
+      </div>
+    </div>
+
+    <!-- CHAT TRUTH + ANALYSIS -->
+    <div style="display:flex;flex-direction:column;gap:16px;">
+
+      <!-- CHAT TRUTH BOX -->
+      <div class="truth-box">
+        <h3>⚠️ /chat — The Real Numbers</h3>
+        <div class="truth-split" style="margin-top:12px">
+          <div class="truth-new" style="width:9.9%">9.9%</div>
+          <div class="truth-ret" style="width:90.1%">90.1% Returning</div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:12px">
+          <span>74 new users</span>
+          <span>676 returning users</span>
+          <span>750 total</span>
+        </div>
+        <div class="truth-legend">
+          <div class="truth-item new-item">
+            <div class="val">74</div>
+            <div class="desc">New users on /chat</div>
+            <div class="note">← Campaign target</div>
+          </div>
+          <div class="truth-item ret-item">
+            <div class="val">676</div>
+            <div class="desc">Returning users</div>
+            <div class="note">← Product retention ✓</div>
+          </div>
+        </div>
+        <div style="margin-top:12px;padding:10px;background:#0a0a14;border-radius:8px;font-size:11px;color:var(--muted);line-height:1.6">
+          <strong style="color:var(--accent4)">What this actually means:</strong><br>
+          The 676 returning /chat sessions prove your product has <strong style="color:var(--ok)">strong retention</strong> — users come back. But for campaign measurement, only the <strong style="color:var(--new)">74 new user sessions</strong> count as funnel conversions.
+        </div>
+      </div>
+
+      <!-- FUNNEL CONVERSION SUMMARY -->
+      <div class="card">
+        <h3>📊 New User Funnel Summary</h3>
+        <div class="subtitle">End-to-end conversion rates for new visitors</div>
+        <table class="eng-table">
+          <thead><tr><th>Stage</th><th>Users</th><th>Conv %</th><th>From Baseline</th></tr></thead>
+          <tbody>
+            <tr><td>First Visit</td><td>1,194</td><td>—</td><td><span class="eng-score excellent">100%</span></td></tr>
+            <tr><td>→ Signup Page</td><td>103</td><td>8.6%</td><td><span class="eng-score crit">8.6%</span></td></tr>
+            <tr><td>→ Onboarding</td><td>98</td><td>95.1%</td><td><span class="eng-score good">8.2%</span></td></tr>
+            <tr><td>→ Auth/Login</td><td>65</td><td>66.3%</td><td><span class="eng-score warn">5.4%</span></td></tr>
+            <tr><td>→ Chat (Used)</td><td>74</td><td>113%*</td><td><span class="eng-score warn">6.2%</span></td></tr>
+            <tr><td>→ Billing</td><td>17</td><td>23.0%</td><td><span class="eng-score crit">1.4%</span></td></tr>
+          </tbody>
+        </table>
+        <div style="font-size:10px;color:var(--muted);margin-top:8px">*>100% because some users returned in a later session to use chat</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CRITICAL FINDINGS -->
+<div class="section" style="padding-top:28px">
+  <div class="section-title">Critical Findings</div>
+  <div class="findings-grid">
+    <div class="finding critical">
+      <div class="finding-label">🔴 Biggest Drop-off</div>
+      <div class="finding-stat">91.4%</div>
+      <div class="finding-desc">Of new visitors <strong>never reach /signup</strong>. Homepage → Signup is the weakest step. Only 103 of 1,194 new users clicked through. This is the #1 thing to fix with ad landing pages.</div>
+    </div>
+    <div class="finding critical">
+      <div class="finding-label">🔴 Signup Bounce (New Users)</div>
+      <div class="finding-stat">48.3%</div>
+      <div class="finding-desc">New users bounce from /signup at <strong>48.3%</strong> — far worse than the 21% blended average we previously reported. Returning users bounce 0%. The UX redesign is critical.</div>
+    </div>
+    <div class="finding warning">
+      <div class="finding-label">🟡 Chat → Billing Gap</div>
+      <div class="finding-stat">77%</div>
+      <div class="finding-desc">77% of new users who use /chat do <strong>not</strong> visit /billing. Only 17 of 74 chat users showed upgrade intent. Need in-app upgrade prompts after first chat session.</div>
+    </div>
+    <div class="finding positive">
+      <div class="finding-label">🟢 Product Retention</div>
+      <div class="finding-stat">76.5%</div>
+      <div class="finding-desc">Returning users have <strong>76.5% engagement rate</strong> vs 39.5% for new. 676 returning /chat sessions proves the product creates habits. Retention is strong — acquisition is the gap.</div>
+    </div>
+    <div class="finding positive">
+      <div class="finding-label">🟢 Form Completion</div>
+      <div class="finding-stat">95.1%</div>
+      <div class="finding-desc">Once new users <strong>start the signup form</strong>, 95.1% complete it. The problem is getting them to /signup in the first place — not the form itself.</div>
+    </div>
+    <div class="finding warning">
+      <div class="finding-label">🟡 Organic Social Quality</div>
+      <div class="finding-stat">70.4%</div>
+      <div class="finding-desc">Organic Social (LinkedIn/Instagram) brings <strong>74 new users</strong> with 70.4% engagement — the highest quality channel after Organic Search. Paid social will likely perform even better with targeting.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ACQUISITION + ENGAGEMENT -->
+<div class="section" style="padding-top:28px">
+  <div class="section-title">Acquisition & Engagement by Channel</div>
+  <div class="two-col">
+    <div class="card">
+      <h3>New User Acquisition Channels</h3>
+      <div class="subtitle">Where new users come from — ordered by volume</div>
+      <div class="acq-row">
+        <div class="acq-channel"><div class="acq-dot" style="background:#4fc3f7"></div>Direct</div>
+        <div class="acq-stats">
+          <div class="acq-stat"><div class="val">893</div><div class="lbl">New users</div></div>
+          <div class="acq-stat"><div class="val">74.7%</div><div class="lbl">Share</div></div>
+          <div class="acq-stat"><div class="eng-bar"><div class="eng-bar-fill" style="width:51.4%;background:#4fc3f7"></div></div><div class="lbl">51.4% eng</div></div>
+        </div>
+      </div>
+      <div class="acq-row">
+        <div class="acq-channel"><div class="acq-dot" style="background:#81c784"></div>Organic Search</div>
+        <div class="acq-stats">
+          <div class="acq-stat"><div class="val">193</div><div class="lbl">New users</div></div>
+          <div class="acq-stat"><div class="val">16.1%</div><div class="lbl">Share</div></div>
+          <div class="acq-stat"><div class="eng-bar"><div class="eng-bar-fill" style="width:69%;background:#81c784"></div></div><div class="lbl">69.0% eng</div></div>
+        </div>
+      </div>
+      <div class="acq-row">
+        <div class="acq-channel"><div class="acq-dot" style="background:#ff8a65"></div>Organic Social</div>
+        <div class="acq-stats">
+          <div class="acq-stat"><div class="val">74</div><div class="lbl">New users</div></div>
+          <div class="acq-stat"><div class="val">6.2%</div><div class="lbl">Share</div></div>
+          <div class="acq-stat"><div class="eng-bar"><div class="eng-bar-fill" style="width:70.4%;background:#ff8a65"></div></div><div class="lbl">70.4% eng</div></div>
+        </div>
+      </div>
+      <div class="acq-row">
+        <div class="acq-channel"><div class="acq-dot" style="background:#ce93d8"></div>Referral</div>
+        <div class="acq-stats">
+          <div class="acq-stat"><div class="val">28</div><div class="lbl">New users</div></div>
+          <div class="acq-stat"><div class="val">2.3%</div><div class="lbl">Share</div></div>
+          <div class="acq-stat"><div class="eng-bar"><div class="eng-bar-fill" style="width:68.9%;background:#ce93d8"></div></div><div class="lbl">68.9% eng</div></div>
+        </div>
+      </div>
+      <div style="margin-top:12px;padding:10px;background:#0a1a0a;border-radius:8px;font-size:11px;color:var(--muted)">
+        💡 <strong style="color:var(--ok)">Paid Social will be a new row here.</strong> Organic Social already shows 70.4% engagement — paid will target higher-intent audiences.
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Page Engagement — New vs Returning</h3>
+      <div class="subtitle">Sessions and bounce rates segmented by user type</div>
+      <table class="eng-table">
+        <thead><tr><th>Page</th><th>New Sessions</th><th>Ret Sessions</th><th>New Bounce</th><th>Ret Bounce</th></tr></thead>
+        <tbody>
+          <tr><td>/</td><td class="new-color">378</td><td class="ret-color">408</td><td><span class="eng-score warn">33.3%</span></td><td><span class="eng-score excellent">4.2%</span></td></tr>
+          <tr><td>/signup</td><td class="new-color">103</td><td class="ret-color">48</td><td><span class="eng-score crit">48.3%*</span></td><td><span class="eng-score excellent">0%</span></td></tr>
+          <tr><td>/login</td><td class="new-color">67</td><td class="ret-color">231</td><td><span class="eng-score good">35.4%</span></td><td><span class="eng-score excellent">27.5%</span></td></tr>
+          <tr><td>/onboarding</td><td class="new-color">98</td><td class="ret-color">38</td><td><span class="eng-score excellent">~8%</span></td><td><span class="eng-score excellent">~8%</span></td></tr>
+          <tr><td>/chat</td><td class="new-color">74</td><td class="ret-color">676</td><td><span class="eng-score warn">~20%</span></td><td><span class="eng-score excellent">7.7%</span></td></tr>
+          <tr><td>/billing</td><td class="new-color">17</td><td class="ret-color">88</td><td><span class="eng-score good">~15%</span></td><td><span class="eng-score excellent">2.9%</span></td></tr>
+        </tbody>
+      </table>
+      <div style="font-size:10px;color:var(--muted);margin-top:8px">*Landing page data: 48.3% of new users who land directly on /signup bounce immediately</div>
+    </div>
+  </div>
+</div>
+
+<!-- EVENTS BREAKDOWN -->
+<div class="section" style="padding-top:28px">
+  <div class="section-title">Event Tracking — New vs Returning</div>
+  <div class="two-col">
+    <div class="card">
+      <h3>Key Events by User Type</h3>
+      <div class="subtitle">All events segmented — new users are the campaign signal</div>
+      <div class="event-row">
+        <div><div class="event-name">first_visit</div><div style="font-size:10px;color:var(--muted)">Baseline — new user arrives</div></div>
+        <div class="event-bars"><span class="event-pill new-pill">1,194 new</span><span class="event-pill ret-pill">2 ret</span></div>
+      </div>
+      <div class="event-row">
+        <div><div class="event-name">utm_captured</div><div style="font-size:10px;color:var(--muted)">Came via tracked link</div></div>
+        <div class="event-bars"><span class="event-pill new-pill">638 new</span><span class="event-pill ret-pill">287 ret</span></div>
+      </div>
+      <div class="event-row">
+        <div><div class="event-name">cta_click</div><div style="font-size:10px;color:var(--muted)">Clicked a call-to-action</div></div>
+        <div class="event-bars"><span class="event-pill new-pill">147 new</span><span class="event-pill ret-pill">104 ret</span></div>
+      </div>
+      <div class="event-row">
+        <div><div class="event-name">exit_intent</div><div style="font-size:10px;color:var(--muted)">About to leave — retarget these</div></div>
+        <div class="event-bars"><span class="event-pill new-pill">84 new</span><span class="event-pill ret-pill">127 ret</span></div>
+      </div>
+      <div class="event-row">
+        <div><div class="event-name">form_start</div><div style="font-size:10px;color:var(--muted)">Began signup form</div></div>
+        <div class="event-bars"><span class="event-pill new-pill">41 new</span><span class="event-pill ret-pill">107 ret</span></div>
+      </div>
+      <div class="event-row">
+        <div><div class="event-name">pricing_toggle</div><div style="font-size:10px;color:var(--muted)">Explored pricing plans</div></div>
+        <div class="event-bars"><span class="event-pill new-pill">20 new</span><span class="event-pill ret-pill">6 ret</span></div>
+      </div>
+      <div class="event-row">
+        <div><div class="event-name">popup_signup</div><div style="font-size:10px;color:var(--muted)">Exit popup conversion</div></div>
+        <div class="event-bars"><span class="event-pill new-pill" style="background:#ff6b6b22;color:var(--warn)">1 new</span><span class="event-pill ret-pill">0 ret</span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Daily New vs Returning Trend</h3>
+      <div class="subtitle">Last 30 days · Bar = new users (teal) | returning (purple)</div>
+      <div class="legend" style="margin-bottom:8px">
+        <div class="legend-item"><div class="legend-dot" style="background:var(--new)"></div>New users</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--accent)"></div>Returning users</div>
+      </div>
+      <div class="sparkline-wrap">
+        <div style="display:flex;align-items:flex-end;gap:2px;flex:1;height:100%">
+          <!-- Daily data from GA4: new/ret per day Apr15-May15 -->
+          <div style="display:flex;flex-direction:column;align-items:center;flex:1;height:100%;justify-content:flex-end;gap:1px"><div class="spark-bar spark-ret" style="height:26px"></div><div class="spark-bar spark-new" style="height:59px"></div></div>
+          <div style="display:flex;flex-direction:column;align-items:center;flex:1;height:100%;justify-content:flex-end;gap:1px"><div class="spark-bar spark-ret" style="height:18px"></div><div class="spark-bar spark-new" style="height:37px"></div></div>
+          <div style="display:flex;flex-direction:column;align-items:center;flex:1;height:100%;justify-content:flex-end;gap:1px"><div class="spark-bar spark-ret" style="height:19px"></div><div class="spark-bar spark-new" style="height:64px"></div></div>
+          <div style="display:flex;flex-direction:column;align-items:center;flex:1;height:100%;justify-content:flex-end;gap:1px"><div class="spark-bar spark-ret" style="height:12px"></div><div class="spark-bar spark-new" style="height:48px"></div></div>
+          <div style="display:flex;flex-direction:column;align-items:center;flex:1;height:100%;justify-content:flex-end;gap:1px"><div class="spark-bar spark-ret" style="height:11px"></div><div class="spark-bar spark-new" style="height:43px"></div></div>
+          <div style="display:flex;flex-direction:column;align-items:center;flex:1;height:100%;justify-content:flex-end;gap:1px"><div class="spark-bar spark-ret" style="height:18px"></div><div class="spark-bar spark-new" style="height:34px"></div></div>
+          <div style="display:flex;flex-direction:column;align-items:center;flex:1;height:100%;justify-content:flex-end;gap:1px"><div class="spark-bar spark-ret" style="height:14px"></div><div class="spark-bar spark-new" style="height:34px"></div></div>
+          <div style="display:flex;flex-direction:column;align-items:center;flex:1;height:100%;justify-content:flex-end;gap:1px"><div class="spark-bar spark-ret" style="height:18px"></div><div class="spark-bar spark-new" style="height:44px"></div></div>
+          <div style="display:flex;flex-direction:column;align-items:center;flex:1;height:100%;justify-content:flex-end;gap:1px"><div class="spark-bar spark-ret" style="height:26px"></div><div class="spark-bar spark-new" style="height:51px"></div></div>
+          <div style="display:flex;flex-direction:column;align-items:center;flex:1;height:100%;justify-content:flex-end;gap:1px"><div class="spark-bar spark-ret" style="height:16px"></div><div class="spark-bar spark-new" style="height:37px"></div></div>
+          <div style="display:flex;flex-direction:column;align-items:center;flex:1;height:100%;justify-content:flex-end;gap:1px"><div class="spark-bar spark-ret" style="height:9px"></div><div class="spark-bar spark-new" style="height:45px"></div></div>
+          <div style="display:flex;flex-direction:column;align-items:center;flex:1;height:100%;justify-content:flex-end;gap:1px"><div class="spark-bar spark-ret" style="height:12px"></div><div class="spark-bar spark-new" style="height:36px"></div></div>
+          <div style="display:flex;flex-direction:column;align-items:center;flex:1;height:100%;justify-content:flex-end;gap:1px"><div class="spark-bar spark-ret" style="height:15px"></div><div class="spark-bar spark-new" style="height:45px"></div></div>
+          <div style="display:flex;flex-direction:column;align-items:center;flex:1;height:100%;justify-content:flex-end;gap:1px"><div class="spark-bar spark-ret" style="height:20px"></div><div class="spark-bar spark-new" style="height:19px"></div></div>
+          <div style="display:flex;flex-direction:column;align-items:center;flex:1;height:100%;justify-content:flex-end;gap:1px"><div class="spark-bar spark-ret" style="height:25px"></div><div class="spark-bar spark-new" style="height:6px"></div></div>
+          <div style="display:flex;flex-direction:column;align-items:center;flex:1;height:100%;justify-content:flex-end;gap:1px"><div class="spark-bar spark-ret" style="height:24px"></div><div class="spark-bar spark-new" style="height:36px"></div></div>
+          <div style="display:flex;flex-direction:column;align-items:center;flex:1;height:100%;justify-content:flex-end;gap:1px"><div class="spark-bar spark-ret" style="height:10px"></div><div class="spark-bar spark-new" style="height:12px"></div></div>
+          <div style="display:flex;flex-direction:column;align-items:center;flex:1;height:100%;justify-content:flex-end;gap:1px"><div class="spark-bar spark-ret" style="height:12px"></div><div class="spark-bar spark-new" style="height:16px"></div></div>
+          <div style="display:flex;flex-direction:column;align-items:center;flex:1;height:100%;justify-content:flex-end;gap:1px"><div class="spark-bar spark-ret" style="height:11px"></div><div class="spark-bar spark-new" style="height:13px"></div></div>
+          <div style="display:flex;flex-direction:column;align-items:center;flex:1;height:100%;justify-content:flex-end;gap:1px"><div class="spark-bar spark-ret" style="height:21px"></div><div class="spark-bar spark-new" style="height:56px"></div></div>
+          <div style="display:flex;flex-direction:column;align-items:center;flex:1;height:100%;justify-content:flex-end;gap:1px"><div class="spark-bar spark-ret" style="height:19px"></div><div class="spark-bar spark-new" style="height:35px"></div></div>
+          <div style="display:flex;flex-direction:column;align-items:center;flex:1;height:100%;justify-content:flex-end;gap:1px"><div class="spark-bar spark-ret" style="height:18px"></div><div class="spark-bar spark-new" style="height:18px"></div></div>
+          <div style="display:flex;flex-direction:column;align-items:center;flex:1;height:100%;justify-content:flex-end;gap:1px"><div class="spark-bar spark-ret" style="height:20px"></div><div class="spark-bar spark-new" style="height:77px"></div></div>
+          <div style="display:flex;flex-direction:column;align-items:center;flex:1;height:100%;justify-content:flex-end;gap:1px"><div class="spark-bar spark-ret" style="height:18px"></div><div class="spark-bar spark-new" style="height:19px"></div></div>
+          <div style="display:flex;flex-direction:column;align-items:center;flex:1;height:100%;justify-content:flex-end;gap:1px"><div class="spark-bar spark-ret" style="height:15px"></div><div class="spark-bar spark-new" style="height:15px"></div></div>
+          <div style="display:flex;flex-direction:column;align-items:center;flex:1;height:100%;justify-content:flex-end;gap:1px"><div class="spark-bar spark-ret" style="height:13px"></div><div class="spark-bar spark-new" style="height:14px"></div></div>
+          <div style="display:flex;flex-direction:column;align-items:center;flex:1;height:100%;justify-content:flex-end;gap:1px"><div class="spark-bar spark-ret" style="height:24px"></div><div class="spark-bar spark-new" style="height:72px"></div></div>
+          <div style="display:flex;flex-direction:column;align-items:center;flex:1;height:100%;justify-content:flex-end;gap:1px"><div class="spark-bar spark-ret" style="height:21px"></div><div class="spark-bar spark-new" style="height:116px"></div></div>
+          <div style="display:flex;flex-direction:column;align-items:center;flex:1;height:100%;justify-content:flex-end;gap:1px"><div class="spark-bar spark-ret" style="height:16px"></div><div class="spark-bar spark-new" style="height:19px"></div></div>
+          <div style="display:flex;flex-direction:column;align-items:center;flex:1;height:100%;justify-content:flex-end;gap:1px"><div class="spark-bar spark-ret" style="height:13px"></div><div class="spark-bar spark-new" style="height:38px"></div></div>
+          <div style="display:flex;flex-direction:column;align-items:center;flex:1;height:100%;justify-content:flex-end;gap:1px"><div class="spark-bar spark-ret" style="height:11px"></div><div class="spark-bar spark-new" style="height:9px"></div></div>
+        </div>
+      </div>
+      <div class="spark-labels"><span>Apr 15</span><span>Apr 22</span><span>Apr 29</span><span>May 7</span><span>May 12</span><span>May 15</span></div>
+      <div style="margin-top:12px;display:flex;justify-content:space-between;font-size:11px">
+        <div style="text-align:center"><div style="font-weight:700;color:var(--new)">~40/day</div><div style="color:var(--muted)">Avg new users</div></div>
+        <div style="text-align:center"><div style="font-weight:700;color:var(--accent)">~18/day</div><div style="color:var(--muted)">Avg returning</div></div>
+        <div style="text-align:center"><div style="font-weight:700;color:var(--accent4)">May 12</div><div style="color:var(--muted)">Peak: 116 new</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="footer">
+  <div class="footer-note">📊 Data source: Google Analytics 4 · Property 500643354 · All numbers verified from raw GA4 API · Segmented by newVsReturning dimension</div>
+  <div class="footer-note">Paid Social rows (Instagram/LinkedIn) will appear automatically once campaigns go live</div>
+</div>
+
+</body>
+</html>

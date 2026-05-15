@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Definable — Start free</title>
+<link rel="icon" href="https://definable.ai/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #0a0a0f;
+    --surface:   #111118;
+    --surface2:  #1a1a24;
+    --border:    rgba(255,255,255,0.07);
+    --text:      #f0f0f5;
+    --muted:     #6b6b80;
+    --accent:    #7c6aff;
+    --accent2:   #a78bfa;
+    --green:     #22c55e;
+    --radius:    14px;
+  }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+
+  /* ── background ── */
+  .bg-glow {
+    position: fixed; border-radius: 50%;
+    filter: blur(120px); pointer-events: none; z-index: 0;
+  }
+  .bg-glow-1 { width: 500px; height: 500px; background: rgba(124,106,255,0.12); top: -100px; left: -100px; }
+  .bg-glow-2 { width: 400px; height: 400px; background: rgba(167,139,250,0.07); bottom: 0; right: -80px; }
+
+  /* ── layout ── */
+  .page {
+    position: relative; z-index: 1;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    min-height: 100vh;
+  }
+
+  /* ══════════ LEFT ══════════ */
+  .left {
+    display: flex; flex-direction: column;
+    justify-content: center;
+    padding: 60px 56px;
+    border-right: 1px solid var(--border);
+  }
+
+  .logo {
+    display: flex; align-items: center; gap: 8px;
+    text-decoration: none; color: var(--text);
+    margin-bottom: 52px;
+  }
+  .logo img { height: 22px; width: auto; }
+  .logo span { font-size: 17px; font-weight: 600; letter-spacing: -0.3px; }
+
+  .left-headline { margin-bottom: 36px; }
+  .left-headline h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(32px, 3.5vw, 44px);
+    line-height: 1.15;
+    letter-spacing: -0.5px;
+    color: var(--text);
+    margin-bottom: 14px;
+  }
+  .left-headline h1 em {
+    font-style: italic;
+    background: linear-gradient(135deg, var(--accent2), var(--accent));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .left-headline p {
+    font-size: 15px; color: var(--muted);
+    max-width: 380px; line-height: 1.7;
+  }
+
+  /* chat demo */
+  .demo-chat {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin-bottom: 32px;
+  }
+  .chat-header {
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface2);
+  }
+  .chat-avatar {
+    width: 28px; height: 28px; border-radius: 8px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; color: white; flex-shrink: 0;
+  }
+  .chat-name { font-size: 13px; font-weight: 600; flex: 1; }
+  .chat-model {
+    display: flex; align-items: center; gap: 5px;
+    font-size: 11px; color: var(--muted);
+  }
+  .model-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--green); animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  .chat-msgs { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+  .msg { display: flex; gap: 8px; align-items: flex-start; }
+  .msg-avatar {
+    width: 24px; height: 24px; border-radius: 7px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; flex-shrink: 0; margin-top: 2px;
+  }
+  .msg-avatar.ai { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: white; }
+  .msg-avatar.human { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+  .msg-bubble {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px; padding: 10px 13px;
+    font-size: 13px; line-height: 1.55; color: var(--text);
+    max-width: calc(100% - 36px);
+  }
+  .msg.user .msg-bubble { background: rgba(124,106,255,0.1); border-color: rgba(124,106,255,0.2); }
+
+  .typing-indicator { display: flex; gap: 4px; padding: 14px 13px; }
+  .typing-dot {
+    width: 5px; height: 5px; border-radius: 50%;
+    background: var(--muted); animation: typing 1.2s infinite;
+  }
+  .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+  .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes typing { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-5px)} }
+
+  .chat-footer {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 14px;
+    border-top: 1px solid var(--border);
+    background: var(--surface2);
+    cursor: pointer;
+  }
+  .chat-input-fake { flex: 1; font-size: 12px; color: var(--muted); }
+  .chat-send {
+    width: 28px; height: 28px; border-radius: 8px;
+    background: var(--accent); display: flex;
+    align-items: center; justify-content: center;
+    transition: transform 0.15s, background 0.15s;
+  }
+  .chat-footer:hover .chat-send { background: var(--accent2); transform: scale(1.08); }
+
+  /* social proof */
+  .social-proof {
+    display: flex; align-items: center; gap: 12px;
+  }
+  .avatars { display: flex; }
+  .avatars span {
+    width: 30px; height: 30px; border-radius: 50%;
+    background: var(--surface2); border: 2px solid var(--bg);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; color: var(--accent2);
+    margin-left: -8px;
+  }
+  .avatars span:first-child { margin-left: 0; }
+  .stars { color: #fbbf24; font-size: 11px; margin-bottom: 2px; }
+  .proof-text { font-size: 12px; color: var(--muted); }
+  .proof-text strong { color: var(--text); }
+
+  /* ══════════ RIGHT ══════════ */
+  .right {
+    display: flex; align-items: center; justify-content: center;
+    padding: 60px 48px;
+  }
+
+  .form-wrap { width: 100%; max-width: 380px; }
+
+  /* no card pill */
+  .no-card-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(34,197,94,0.1);
+    border: 1px solid rgba(34,197,94,0.2);
+    border-radius: 20px;
+    padding: 5px 12px;
+    font-size: 12px; color: var(--green);
+    margin-bottom: 24px;
+  }
+
+  /* headline */
+  .form-headline { margin-bottom: 28px; }
+  .form-headline h2 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 28px; font-weight: 400;
+    letter-spacing: -0.3px; line-height: 1.2;
+    margin-bottom: 6px;
+  }
+  .form-headline h2 em { font-style: italic; color: var(--accent2); }
+  .form-headline p { font-size: 14px; color: var(--muted); }
+
+  /* google btn */
+  .btn-google {
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    width: 100%; padding: 13px 20px;
+    background: white; color: #1a1a1a;
+    border: none; border-radius: 10px;
+    font-size: 14px; font-weight: 600;
+    text-decoration: none; cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s;
+    margin-bottom: 20px;
+  }
+  .btn-google:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(0,0,0,0.35); }
+
+  /* divider */
+  .divider {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 20px;
+  }
+  .divider-line { flex: 1; height: 1px; background: var(--border); }
+  .divider-text { font-size: 12px; color: var(--muted); white-space: nowrap; }
+
+  /* form fields */
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: 12px; font-weight: 500; color: var(--muted); margin-bottom: 6px; letter-spacing: 0.3px; }
+  .field input {
+    width: 100%; padding: 11px 14px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; color: var(--text);
+    font-family: inherit; font-size: 14px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    outline: none;
+  }
+  .field input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(124,106,255,0.12); }
+  .field input.error { border-color: #ef4444; }
+  .field-error { display: none; font-size: 11px; color: #ef4444; margin-top: 4px; }
+  .field-error.show { display: block; }
+
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  /* password strength */
+  .pwd-strength { margin-top: 6px; }
+  .pwd-bar { height: 3px; background: var(--surface2); border-radius: 2px; margin-bottom: 4px; }
+  .pwd-bar-fill { height: 100%; width: 0%; border-radius: 2px; transition: width 0.3s, background 0.3s; }
+  .pwd-hint { font-size: 11px; color: var(--muted); }
+
+  /* submit */
+  .btn-submit {
+    width: 100%; padding: 13px 20px; margin-top: 6px;
+    background: var(--accent); border: none; border-radius: 10px;
+    color: white; font-family: inherit; font-size: 14px; font-weight: 600;
+    cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;
+    transition: background 0.2s, transform 0.15s;
+    position: relative;
+  }
+  .btn-submit:hover { background: var(--accent2); transform: translateY(-1px); }
+  .btn-submit:active { transform: translateY(0); }
+  .spinner {
+    display: none; width: 16px; height: 16px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: white; border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .btn-submit.loading .spinner { display: block; }
+  .btn-submit.loading .btn-text, .btn-submit.loading .btn-arrow { display: none; }
+
+  /* trust row */
+  .trust-row {
+    display: flex; justify-content: center; gap: 20px;
+    margin-top: 16px;
+  }
+  .trust-item {
+    display: flex; align-items: center; gap: 5px;
+    font-size: 11px; color: var(--muted);
+  }
+  .trust-item svg { color: var(--muted); flex-shrink: 0; }
+
+  /* login link */
+  .login-link {
+    text-align: center; font-size: 13px;
+    color: var(--muted); margin-top: 20px;
+  }
+  .login-link a { color: var(--accent2); text-decoration: none; }
+  .login-link a:hover { text-decoration: underline; }
+
+  /* success state */
+  .success-state { display: none; text-align: center; padding: 40px 0; }
+  .success-icon {
+    width: 56px; height: 56px; border-radius: 50%;
+    background: rgba(34,197,94,0.15); border: 2px solid var(--green);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px; color: var(--green);
+    margin: 0 auto 20px;
+    animation: popIn 0.4s cubic-bezier(0.34,1.56,0.64,1);
+  }
+  @keyframes popIn { from{transform:scale(0);opacity:0} to{transform:scale(1);opacity:1} }
+
+  /* ── responsive ── */
+  @media (max-width: 860px) {
+    .page { grid-template-columns: 1fr; }
+    .left { display: none; }
+    .right { padding: 40px 24px; align-items: flex-start; }
+    .form-wrap { max-width: 100%; }
+  }
+</style>
+</head>
+<body>
+
+<div class="bg-glow bg-glow-1"></div>
+<div class="bg-glow bg-glow-2"></div>
+
+<div class="page">
+
+  <!-- ═══════════ LEFT ═══════════ -->
+  <div class="left">
+    <a href="https://definable.ai/" class="logo">
+      <img src="https://definable.ai/logo.svg" alt="Definable">
+      <span>Definable</span>
+    </a>
+
+    <div class="left-headline">
+      <h1>Stop paying for<br><em>10 AI subscriptions.</em></h1>
+      <p>50+ models. 1000+ integrations. One affordable price — hosted in India.</p>
+    </div>
+
+    <!-- chat demo -->
+    <div class="demo-chat">
+      <div class="chat-header">
+        <div class="chat-avatar">✦</div>
+        <div class="chat-name">Definable Assistant</div>
+        <div class="chat-model"><span class="model-dot"></span>GPT-4o</div>
+      </div>
+      <div class="chat-msgs" id="chatMsgs">
+        <div class="msg ai">
+          <div class="msg-avatar ai">✦</div>
+          <div class="msg-bubble">How can I help you today? I can research, write, code, or run workflows.</div>
+        </div>
+        <div class="msg user">
+          <div class="msg-avatar human">Y</div>
+          <div class="msg-bubble">Draft a cold email to enterprise SaaS buyers about our new AI feature</div>
+        </div>
+        <div class="msg ai" style="display:none" id="thinkingMsg">
+          <div class="msg-avatar ai">✦</div>
+          <div class="msg-bubble"><div class="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div></div>
+        </div>
+        <div class="msg ai" style="display:none" id="replyMsg">
+          <div class="msg-avatar ai">✦</div>
+          <div class="msg-bubble">Subject: Cut your AI spend by 60% without losing capability<br><br>Hi [Name], enterprise teams are consolidating 8+ AI tools into one platform. Here's how...</div>
+        </div>
+      </div>
+      <div class="chat-footer" id="chatFooter">
+        <div class="chat-input-fake">Ask anything…</div>
+        <div class="chat-send">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- social proof -->
+    <div class="social-proof">
+      <div class="avatars">
+        <span>A</span><span>S</span><span>R</span><span>P</span><span>M</span>
+      </div>
+      <div>
+        <div class="stars">★★★★★</div>
+        <div class="proof-text"><strong>2,400+ teams</strong> replaced multiple AI tools with Definable</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ RIGHT ═══════════ -->
+  <div class="right">
+    <div class="form-wrap">
+
+      <div id="formState">
+
+        <div class="no-card-pill">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          No credit card needed · Free forever plan
+        </div>
+
+        <div class="form-headline">
+          <h2>Welcome to <em>Definable</em></h2>
+          <p>Create your account in 30 seconds</p>
+        </div>
+
+        <!-- Google OAuth — primary CTA -->
+        <a href="https://app.definable.ai/auth/google" class="btn-google" id="googleBtn">
+          <svg width="18" height="18" viewBox="0 0 24 24">
+            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+          </svg>
+          Continue with Google
+        </a>
+
+        <!-- divider -->
+        <div class="divider">
+          <div class="divider-line"></div>
+          <div class="divider-text">or sign up with email</div>
+          <div class="divider-line"></div>
+        </div>
+
+        <!-- email form -->
+        <form id="signupForm" novalidate>
+          <div class="field-row">
+            <div class="field">
+              <label>First name</label>
+              <input type="text" id="firstName" placeholder="Arjun" autocomplete="given-name">
+              <div class="field-error" id="firstNameErr">Required</div>
+            </div>
+            <div class="field">
+              <label>Last name</label>
+              <input type="text" id="lastName" placeholder="Sharma" autocomplete="family-name">
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Work email</label>
+            <input type="email" id="email" placeholder="you@company.com" autocomplete="email">
+            <div class="field-error" id="emailErr">Enter a valid email</div>
+          </div>
+
+          <div class="field">
+            <label>Password</label>
+            <input type="password" id="password" placeholder="8+ characters" autocomplete="new-password">
+            <div class="pwd-strength">
+              <div class="pwd-bar"><div class="pwd-bar-fill" id="pwdBar"></div></div>
+              <div class="pwd-hint" id="pwdHint">Use 8+ characters with numbers</div>
+            </div>
+          </div>
+
+          <button type="submit" class="btn-submit" id="submitBtn">
+            <div class="spinner"></div>
+            <span class="btn-text">Create free account</span>
+            <span class="btn-arrow">→</span>
+          </button>
+        </form>
+
+        <!-- trust -->
+        <div class="trust-row">
+          <div class="trust-item">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+            No credit card
+          </div>
+          <div class="trust-item">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            India-hosted
+          </div>
+          <div class="trust-item">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20,6 9,17 4,12"/></svg>
+            Cancel anytime
+          </div>
+        </div>
+
+        <div class="login-link">
+          Already have an account? <a href="https://app.definable.ai/login">Sign in →</a>
+        </div>
+
+      </div>
+
+      <!-- success -->
+      <div class="success-state" id="successState">
+        <div class="success-icon">✓</div>
+        <h2 style="font-family:'DM Serif Display',serif;font-size:24px;font-weight:400;margin-bottom:8px">Account created!</h2>
+        <p style="color:var(--muted);font-size:14px;margin-bottom:24px">Redirecting you to your workspace…</p>
+        <div style="height:3px;background:var(--surface2);border-radius:2px;overflow:hidden">
+          <div id="redirectBar" style="height:100%;width:0%;background:var(--accent);transition:width 2s linear;border-radius:2px"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── chat demo ──
+(function() {
+  function runDemo() {
+    var t = document.getElementById('thinkingMsg');
+    var r = document.getElementById('replyMsg');
+    if (!t || !r) return;
+    t.style.display = 'flex'; r.style.display = 'none';
+    setTimeout(function() {
+      t.style.display = 'none';
+      r.style.display = 'flex';
+    }, 1800);
+  }
+  setTimeout(runDemo, 800);
+  var footer = document.getElementById('chatFooter');
+  if (footer) footer.addEventListener('click', function() {
+    document.getElementById('replyMsg').style.display = 'none';
+    runDemo();
+  });
+})();
+
+// ── password strength ──
+document.getElementById('password').addEventListener('input', function() {
+  var v = this.value, s = 0;
+  if (v.length >= 8) s++;
+  if (/[A-Z]/.test(v)) s++;
+  if (/[0-9]/.test(v)) s++;
+  if (/[^A-Za-z0-9]/.test(v)) s++;
+  var bar = document.getElementById('pwdBar');
+  var hint = document.getElementById('pwdHint');
+  var colors = ['#ef4444','#f97316','#eab308','#22c55e'];
+  var labels = ['Weak','Fair','Good','Strong 💪'];
+  bar.style.width = (s * 25) + '%';
+  bar.style.background = colors[s-1] || '#333';
+  hint.textContent = s > 0 ? labels[s-1] : 'Use 8+ characters with numbers';
+  hint.style.color = s > 0 ? colors[s-1] : 'var(--muted)';
+});
+
+// ── email validation ──
+document.getElementById('email').addEventListener('blur', function() {
+  var ok = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.value);
+  this.classList.toggle('error', this.value && !ok);
+  document.getElementById('emailErr').classList.toggle('show', this.value && !ok);
+});
+
+// ── form submit ──
+document.getElementById('signupForm').addEventListener('submit', function(e) {
+  e.preventDefault();
+  var fn = document.getElementById('firstName').value.trim();
+  var em = document.getElementById('email').value.trim();
+  var ok = true;
+  if (!fn) { document.getElementById('firstNameErr').classList.add('show'); ok = false; }
+  else { document.getElementById('firstNameErr').classList.remove('show'); }
+  if (!em || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) {
+    document.getElementById('emailErr').classList.add('show'); ok = false;
+  } else { document.getElementById('emailErr').classList.remove('show'); }
+  if (!ok) return;
+
+  var btn = document.getElementById('submitBtn');
+  btn.classList.add('loading');
+
+  // GA4 event
+  if (typeof gtag !== 'undefined') gtag('event', 'signup_complete', { method: 'email' });
+
+  setTimeout(function() {
+    document.getElementById('formState').style.display = 'none';
+    var ss = document.getElementById('successState');
+    ss.style.display = 'block';
+    setTimeout(function() {
+      document.getElementById('redirectBar').style.width = '100%';
+    }, 100);
+    setTimeout(function() {
+      window.location.href = 'https://app.definable.ai/onboarding';
+    }, 2200);
+  }, 1200);
+});
+
+// ── GA4 google click ──
+document.getElementById('googleBtn').addEventListener('click', function() {
+  if (typeof gtag !== 'undefined') gtag('event', 'signup_click', { method: 'google' });
+});
+</script>
+</body>
+</html>
